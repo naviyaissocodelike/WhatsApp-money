@@ -1,0 +1,16 @@
+# Dependencies
+node_modules/
+
+# Environment — contains your private key, NEVER commit this
+.env
+
+# WhatsApp session data
+.wwebjs_auth/
+.wwebjs_cache/
+
+# Transfer history (contains tx hashes and wallet addresses)
+data/
+
+# OS
+.DS_Store
+Thumbs.db
