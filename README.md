@@ -1,24 +1,30 @@
-# whatsapp-money
+# NOT FUNNY Bot
 
-Automatically sends ETH (or any EVM native token) from your self-custody wallet to a friend's wallet each day they reply to you on WhatsApp.
+Sends **$0.01 USDC** from your self-custody wallet to a friend's wallet every time they say "NOT FUNNY" to you on Telegram.
+
+Each utterance of "NOT FUNNY" costs you one cent. Your running bill is logged.
 
 ## How it works
 
-1. Runs as a Node.js process on your machine.
-2. Connects to WhatsApp Web via a QR code scan (one-time).
-3. Listens for incoming messages from your configured friend.
-4. On the **first message received each calendar day**, sends a set ETH amount to their wallet.
-5. Skips all subsequent messages that day — maximum one transfer per day.
-
-## Requirements
-
-- Node.js 18+
-- A self-custody wallet (MetaMask or any wallet where you hold the private key)
-- Enough ETH (or native token) in that wallet to cover transfers + gas
-- An Ethereum RPC URL — free tier from [Infura](https://infura.io) or [Alchemy](https://alchemy.com) works fine
-- Your friend's wallet address and WhatsApp phone number
+1. You create a Telegram bot and add your friend to it (or they DM it).
+2. The bot watches for any message from your friend containing "not funny" (case-insensitive).
+3. On each match, $0.01 USDC is sent on-chain to their wallet — instantly.
+4. A 60-second cooldown prevents spam bursts (configurable).
+5. Every transfer and the phrase that triggered it is logged to `data/transfers.json`.
 
 ## Setup
+
+### 1. Create a Telegram bot
+
+1. Open Telegram and message **@BotFather**
+2. Send `/newbot`, pick a name and username
+3. Copy the **bot token** you receive
+
+### 2. Get your friend's Telegram user ID
+
+Have your friend message **@userinfobot** on Telegram — it replies with their numeric user ID.
+
+### 3. Install and configure
 
 ```bash
 git clone https://github.com/naviyaissocodelike/whatsapp-money.git
@@ -31,48 +37,55 @@ Edit `.env`:
 
 | Variable | Description |
 |---|---|
-| `PRIVATE_KEY` | Your wallet private key (no `0x` prefix) |
-| `FRIEND_WALLET_ADDRESS` | Your friend's `0x...` Ethereum address |
-| `FRIEND_PHONE` | Their WhatsApp number with country code, digits only (e.g. `447911123456`) |
-| `TRANSFER_AMOUNT_ETH` | Amount to send each day (e.g. `0.001`) |
-| `RPC_URL` | Your RPC endpoint |
+| `PRIVATE_KEY` | Your wallet private key (no `0x`) |
+| `FRIEND_WALLET_ADDRESS` | Your friend's `0x...` address |
+| `TELEGRAM_BOT_TOKEN` | Token from @BotFather |
+| `FRIEND_TELEGRAM_ID` | Your friend's numeric Telegram user ID |
+| `USDC_CONTRACT_ADDRESS` | USDC address for your network (see below) |
+| `RPC_URL` | RPC endpoint for your network |
+| `COOLDOWN_SECONDS` | Min seconds between transfers (default: `60`) |
 
-## Running
+### 4. Fund your wallet
+
+Make sure your wallet has:
+- Enough USDC for transfers
+- A small amount of native token for gas (MATIC on Polygon, ETH on Ethereum/Base/Arbitrum)
+
+### 5. Run
 
 ```bash
 npm start
 ```
 
-The first time you run it a QR code will appear. Open WhatsApp on your phone → **Settings → Linked Devices → Link a Device** and scan it. The session is saved locally so you only need to do this once.
+No QR codes, no browser — just a running process. Keep it open in a terminal or run it with `pm2`/`screen`.
 
-After that the bot runs silently. Each transfer is logged to `data/transfers.json`.
+## Networks and USDC addresses
 
-## Supported networks
+| Network | USDC address | Gas token |
+|---|---|---|
+| Polygon (recommended) | `0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174` | MATIC (~free) |
+| Base | `0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913` | ETH (cheap) |
+| Arbitrum | `0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8` | ETH (cheap) |
+| Ethereum | `0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48` | ETH (expensive) |
 
-Set `RPC_URL` to any EVM-compatible network:
-
-| Network | RPC URL |
-|---|---|
-| Ethereum | `https://mainnet.infura.io/v3/<key>` |
-| Polygon (low fees) | `https://polygon-rpc.com` |
-| Base | `https://mainnet.base.org` |
-| Arbitrum | `https://arb1.arbitrum.io/rpc` |
+**Polygon is recommended** — gas is a fraction of a cent, so $0.01 transfers actually make sense.
 
 ## Transfer log
 
-`data/transfers.json` keeps the last 365 records:
+`data/transfers.json` keeps a full history:
 
 ```json
 {
-  "lastTransferDate": "2024-01-15",
-  "totalTransfers": 3,
+  "totalTransfers": 7,
+  "totalSentUSDC": "0.07",
+  "lastTransferTime": "2024-01-15T09:23:11.000Z",
   "history": [
     {
-      "date": "2024-01-15",
       "timestamp": "2024-01-15T09:23:11.000Z",
       "txHash": "0xabc...",
-      "amount": "0.001",
-      "to": "0xFriend..."
+      "amountUSDC": "0.01",
+      "to": "0xFriend...",
+      "triggerMessage": "bro that joke was NOT FUNNY at all"
     }
   ]
 }
@@ -80,7 +93,6 @@ Set `RPC_URL` to any EVM-compatible network:
 
 ## Security
 
-- **Your private key controls your funds.** Keep `.env` secure and never commit it (it is in `.gitignore`).
-- Use a dedicated wallet funded with only as much as you're comfortable automating.
-- Run this on a machine you own and control — not a shared server.
-- The `.wwebjs_auth/` directory contains your WhatsApp session token; treat it like a password.
+- **Never commit `.env`** — it contains your private key (already in `.gitignore`).
+- Use a dedicated wallet with only what you're willing to automate.
+- Run on a machine you own and control.

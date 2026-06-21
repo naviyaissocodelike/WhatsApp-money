@@ -1,29 +1,33 @@
 const { ethers } = require('ethers');
 
-async function sendETH(privateKey, toAddress, amountEth, rpcUrl) {
+const USDC_ABI = [
+  'function transfer(address to, uint256 amount) returns (bool)',
+  'function balanceOf(address owner) view returns (uint256)',
+  'function decimals() view returns (uint8)',
+];
+
+async function sendUSDC(privateKey, toAddress, amountUSD, rpcUrl, usdcContractAddress) {
   const provider = new ethers.JsonRpcProvider(rpcUrl);
   const wallet = new ethers.Wallet(privateKey, provider);
+  const usdc = new ethers.Contract(usdcContractAddress, USDC_ABI, wallet);
 
-  const amount = ethers.parseEther(amountEth.toString());
-  const balance = await provider.getBalance(wallet.address);
+  const decimals = await usdc.decimals();
+  const amount = ethers.parseUnits(amountUSD.toString(), decimals);
 
-  // Estimate gas cost as a safety buffer before sending
-  const feeData = await provider.getFeeData();
-  const gasPrice = feeData.maxFeePerGas ?? feeData.gasPrice ?? ethers.parseUnits('50', 'gwei');
-  const estimatedGas = 21000n * gasPrice;
-
-  if (balance < amount + estimatedGas) {
-    const have = ethers.formatEther(balance);
-    const need = ethers.formatEther(amount + estimatedGas);
-    throw new Error(`Insufficient balance: have ${have} ETH, need ~${need} ETH (transfer + gas)`);
+  const balance = await usdc.balanceOf(wallet.address);
+  if (balance < amount) {
+    const have = ethers.formatUnits(balance, decimals);
+    throw new Error(`Insufficient USDC: have $${have}, need $${amountUSD}`);
   }
 
-  const tx = await wallet.sendTransaction({
-    to: toAddress,
-    value: amount,
-  });
+  // Also check native token balance for gas
+  const nativeBalance = await provider.getBalance(wallet.address);
+  if (nativeBalance === 0n) {
+    throw new Error('No native token (ETH/MATIC) for gas fees.');
+  }
 
-  console.log(`  TX hash : ${tx.hash}`);
+  const tx = await usdc.transfer(toAddress, amount);
+  console.log(`  TX hash: ${tx.hash}`);
   console.log('  Waiting for confirmation...');
 
   const receipt = await tx.wait();
@@ -32,4 +36,4 @@ async function sendETH(privateKey, toAddress, amountEth, rpcUrl) {
   return tx.hash;
 }
 
-module.exports = { sendETH };
+module.exports = { sendUSDC };

@@ -1,7 +1,7 @@
 {
   "name": "whatsapp-money",
-  "version": "1.0.0",
-  "description": "Automatically send ETH to a friend when they reply on WhatsApp",
+  "version": "2.0.0",
+  "description": "Sends $0.01 USDC every time your friend says NOT FUNNY on Telegram",
   "main": "src/index.js",
   "scripts": {
     "start": "node src/index.js"
@@ -12,7 +12,6 @@
   "dependencies": {
     "dotenv": "^16.4.5",
     "ethers": "^6.11.1",
-    "qrcode-terminal": "^0.12.0",
-    "whatsapp-web.js": "^1.23.0"
+    "node-telegram-bot-api": "^0.66.0"
   }
 }
